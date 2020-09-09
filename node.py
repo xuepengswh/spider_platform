@@ -94,7 +94,6 @@ class Main():
         self.task_status = None
         self.webSite = ""
         self.langCode = ""
-        self.store_key_name = ""    # 存储字段名字
 
         # 下载 设置初始化
         self.timeInterval = 0  # 时间间隔
@@ -143,11 +142,6 @@ class Main():
             opt = webdriver.ChromeOptions()
             opt.set_headless()
             self.driver = webdriver.Chrome(options=opt)
-        # 数据库存储字段名字
-        if "store_key_name" in tempData:
-            self.store_key_name = tempData["store_key_name"]
-        else:
-            self.store_key_name = ""
 
     def change_status_running(self):
         mongo_id = self.task_status["id"]  # 获取id值
@@ -169,7 +163,7 @@ class Main():
 
         if self.storeQueue == "1":  # 存储到redis和mongodb
             if self.langCode == "zh":   #中文存储队列
-                consStore_url_key_name = self.redis_platform_address+":constant:summary:" + self.task_code  # 永久的redis存储
+                consStore_url_key_name = self.redis_platform_address+":constant:summary:" +self.task_code  # 永久的redis存储
                 self.redis.lpush(consStore_url_key_name, data_id)
                 consStore_url_key_name = self.redis_platform_address+":constant:tag:" + self.task_code  # 永久的redis存储
                 self.redis.lpush(consStore_url_key_name, data_id)
@@ -178,10 +172,8 @@ class Main():
                 consStore_url_key_name = self.redis_platform_address + ":constant:trans:" + self.task_code  # 永久的redis存储
                 self.redis.lpush(consStore_url_key_name, data_id)
                 self.myMongo[self.task_code].insert_one(data)
-
-        # tempStore_url_key_name = self.redis_platform_address+":temporary"  # 暂时的存储
-        # self.redis.lpush(tempStore_url_key_name, data)
-
+        else:
+            self.myMongo[self.task_code].insert_one(data)
 
     def get_url_key_name(self):
         url_key_find = self.redis_platform_address+":url:*"
@@ -285,14 +277,14 @@ class Main():
 
     def thread_start(self, urlList):
         threadList = []
-        for url in urlList:
-            if not url.startswith("{"):    #redis取出数据为单纯的url
-                mythread = threading.Thread(target=self.get_content, args=(url,None))
+        for url_data in urlList:
+            if not url_data.startswith("{"):    #redis取出数据为单纯的url
+                mythread = threading.Thread(target=self.get_content, args=(url_data,None))
                 threadList.append(mythread)
             else:   #redis取出数据为字典
-                url = json.loads(url)#将提取数据转化为json格式
-                content_url = url["url"]
-                mythread = threading.Thread(target=self.get_content, args=(content_url,url))
+                url_data = json.loads(url_data) # 将提取数据转化为json格式
+                content_url = url_data["url"]
+                mythread = threading.Thread(target=self.get_content, args=(content_url,url_data))
                 threadList.append(mythread)
         for i in threadList:
             i.start()
